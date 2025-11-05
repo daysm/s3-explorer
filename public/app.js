@@ -133,6 +133,23 @@ async function handleCredentialsSubmit(e) {
   }
 }
 
+function handleFolderClick(e) {
+  const path = e.currentTarget.dataset.path;
+  
+  // Check for middle-click (button 1) or Ctrl/Cmd+click
+  const isMiddleClick = e.type === 'auxclick' && e.button === 1;
+  const isModifiedClick = e.ctrlKey || e.metaKey;
+  
+  // If middle-click or modified click, let browser handle opening in new tab
+  if (isMiddleClick || isModifiedClick) {
+    return; // Browser will use the href attribute
+  }
+  
+  // Otherwise, prevent default and load in same tab
+  e.preventDefault();
+  loadFiles(path);
+}
+
 async function loadFiles(prefix = '', pushState = true, refresh = false) {
   currentPrefix = prefix;
   updateBreadcrumb();
@@ -190,14 +207,19 @@ function renderFiles(folders, files) {
   folders.forEach((folder) => {
     const row = document.createElement('tr');
     row.className = 'folder-row';
-    row.onclick = () => loadFiles(folder.fullPath);
+    
+    const folderUrl = `?path=${encodeURIComponent(folder.fullPath)}`;
     
     row.innerHTML = `
-      <td><span class="file-icon">📁</span>${folder.name}</td>
+      <td><a href="${folderUrl}" class="folder-link" data-path="${escapeHtml(folder.fullPath)}"><span class="file-icon">📁</span>${folder.name}</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
     `;
+    
+    const link = row.querySelector('.folder-link');
+    link.addEventListener('click', handleFolderClick);
+    link.addEventListener('auxclick', handleFolderClick);
     
     filesTbody.appendChild(row);
   });
@@ -228,7 +250,12 @@ function renderFiles(folders, files) {
 function updateBreadcrumb() {
   const displayUri = rootPrefix ? `s3://${currentBucket}/${rootPrefix}` : `s3://${currentBucket}`;
   
-  currentBucketEl.innerHTML = `<a class="breadcrumb-link" onclick="loadFiles('${rootPrefix}')" style="font-weight: 700; cursor: pointer;">${displayUri}</a>`;
+  const rootUrl = `?path=${encodeURIComponent(rootPrefix)}`;
+  currentBucketEl.innerHTML = `<a href="${rootUrl}" class="breadcrumb-link" data-path="${escapeHtml(rootPrefix)}" style="font-weight: 700; cursor: pointer;">${displayUri}</a>`;
+  
+  const rootLink = currentBucketEl.querySelector('.breadcrumb-link');
+  rootLink.addEventListener('click', handleFolderClick);
+  rootLink.addEventListener('auxclick', handleFolderClick);
   
   if (currentPrefix === rootPrefix) {
     breadcrumbPath.innerHTML = ' / <span style="color: #999;">(root)</span>';
@@ -247,11 +274,17 @@ function updateBreadcrumb() {
     if (isLast) {
       breadcrumb += `<span style="color: #999;">${part}</span>`;
     } else {
-      breadcrumb += `<a class="breadcrumb-link" onclick="loadFiles('${path}')">${part}</a> / `;
+      const partUrl = `?path=${encodeURIComponent(path)}`;
+      breadcrumb += `<a href="${partUrl}" class="breadcrumb-link" data-path="${escapeHtml(path)}">${part}</a> / `;
     }
   });
 
   breadcrumbPath.innerHTML = breadcrumb;
+  
+  breadcrumbPath.querySelectorAll('.breadcrumb-link').forEach(link => {
+    link.addEventListener('click', handleFolderClick);
+    link.addEventListener('auxclick', handleFolderClick);
+  });
 }
 
 async function previewFile(key, fileName) {

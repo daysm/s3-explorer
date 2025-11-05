@@ -197,11 +197,20 @@ h2 {
 .folder-row {
   cursor: pointer;
   font-weight: 600;
-  color: #667eea;
 }
 
 .folder-row:hover {
   background: #f0f4ff !important;
+}
+
+.folder-link {
+  color: #667eea;
+  text-decoration: none;
+  display: block;
+}
+
+.folder-link:hover {
+  text-decoration: underline;
 }
 
 .file-row {
