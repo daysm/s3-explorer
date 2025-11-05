@@ -172,7 +172,8 @@ class Renderer {
   renderFolder(folder) {
     const row = document.createElement('tr');
     row.className = 'folder-row';
-    const folderUrl = `?path=${encodeURIComponent(folder.fullPath)}`;
+    const s3Uri = `s3://${this.state.currentBucket}/${folder.fullPath}`;
+    const folderUrl = buildPathUrl(s3Uri);
     
     row.innerHTML = `
       <td><a href="${folderUrl}" class="folder-link" data-path="${escapeHtml(folder.fullPath)}"><span class="file-icon">📁</span>${escapeHtml(folder.name)}</a></td>
@@ -212,7 +213,8 @@ class Renderer {
 
   updateBreadcrumb() {
     const displayUri = this.state.getDisplayUri();
-    const rootUrl = `?path=${encodeURIComponent(this.state.rootPrefix)}`;
+    const rootS3Uri = `s3://${this.state.currentBucket}/${this.state.rootPrefix}`;
+    const rootUrl = buildPathUrl(rootS3Uri);
     
     this.dom.currentBucketEl.innerHTML = `<a href="${rootUrl}" class="breadcrumb-link" data-path="${escapeHtml(this.state.rootPrefix)}" style="font-weight: 700; cursor: pointer;">${displayUri}</a>`;
     
@@ -236,7 +238,8 @@ class Renderer {
       if (isLast) {
         breadcrumb += `<span style="color: #999;">${escapeHtml(part)}</span>`;
       } else {
-        const partUrl = `?path=${encodeURIComponent(path)}`;
+        const s3Uri = `s3://${this.state.currentBucket}/${path}`;
+        const partUrl = buildPathUrl(s3Uri);
         breadcrumb += `<a href="${partUrl}" class="breadcrumb-link" data-path="${escapeHtml(path)}">${escapeHtml(part)}</a> / `;
       }
     });
@@ -313,18 +316,56 @@ class S3Explorer {
         this.dom.disconnectBtn.style.display = 'none';
         
         const urlParams = new URLSearchParams(window.location.search);
-        const urlPrefix = urlParams.get('path');
-        const initialPrefix = urlPrefix !== null ? urlPrefix : this.state.rootPrefix;
+        const urlPath = urlParams.get('path');
+        
+        // If URL has path param, parse it (could be S3 URI or just prefix)
+        let initialPrefix = this.state.rootPrefix;
+        if (urlPath) {
+          if (urlPath.startsWith('s3://')) {
+            // Parse S3 URI to extract prefix
+            const parsed = this.parseS3Uri(urlPath);
+            if (parsed.bucket === config.bucket) {
+              initialPrefix = parsed.prefix;
+            }
+          } else {
+            // Assume it's a prefix
+            initialPrefix = urlPath;
+          }
+        }
         
         await this.loadFiles(initialPrefix, false);
         
         if (!history.state) {
-          history.replaceState({ prefix: initialPrefix }, '', `?path=${encodeURIComponent(initialPrefix)}`);
+          const s3Uri = `s3://${config.bucket}/${initialPrefix}`;
+          history.replaceState({ prefix: initialPrefix }, '', buildPathUrl(s3Uri));
         }
       }
     } catch (error) {
       console.error('Error checking CLI mode:', error);
     }
+  }
+
+  parseS3Uri(uri) {
+    if (!uri.startsWith('s3://')) {
+      throw new Error('Invalid S3 URI');
+    }
+    
+    const withoutProtocol = uri.slice(5);
+    const firstSlashIndex = withoutProtocol.indexOf('/');
+    
+    if (firstSlashIndex === -1) {
+      return { bucket: withoutProtocol, prefix: '' };
+    }
+    
+    const bucket = withoutProtocol.slice(0, firstSlashIndex);
+    let prefix = withoutProtocol.slice(firstSlashIndex + 1);
+    
+    // Ensure prefix ends with / if it exists
+    if (prefix && !prefix.endsWith('/')) {
+      prefix += '/';
+    }
+    
+    return { bucket, prefix };
   }
 
   async handleCredentialsSubmit(e) {
@@ -350,7 +391,8 @@ class S3Explorer {
       this.dom.currentBucketEl.textContent = this.state.getDisplayUri();
 
       await this.loadFiles(this.state.rootPrefix, false);
-      history.replaceState({ prefix: this.state.rootPrefix }, '', `?path=${encodeURIComponent(this.state.rootPrefix)}`);
+      const initialS3Uri = `s3://${data.bucket}/${this.state.rootPrefix}`;
+      history.replaceState({ prefix: this.state.rootPrefix }, '', buildPathUrl(initialS3Uri));
     } catch (error) {
       this.dom.showError(error.message);
     }
@@ -361,7 +403,8 @@ class S3Explorer {
     this.renderer.updateBreadcrumb();
 
     if (pushState) {
-      const url = `?path=${encodeURIComponent(prefix)}`;
+      const s3Uri = `s3://${this.state.currentBucket}/${prefix}`;
+      const url = buildPathUrl(s3Uri);
       history.pushState({ prefix }, '', url);
     }
 
@@ -427,6 +470,21 @@ function escapeHtml(text) {
     "'": '&#039;'
   };
   return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function encodeS3Uri(uri) {
+  // Only encode characters that must be encoded in URLs
+  // Keep slashes, colons, and most other characters readable
+  return uri.replace(/[^A-Za-z0-9\-_.~:/@]/g, (c) => {
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0');
+  });
+}
+
+function buildPathUrl(s3Uri) {
+  // Manually construct URL to avoid automatic encoding by browser
+  // This ensures slashes and colons remain unencoded
+  const encoded = encodeS3Uri(s3Uri);
+  return '?path=' + encoded;
 }
 
 const app = new S3Explorer();
