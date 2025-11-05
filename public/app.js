@@ -24,7 +24,7 @@ const TEXT_EXTENSIONS = [
   '.txt', '.json', '.csv', '.log', '.md', '.xml', '.yaml', '.yml',
   '.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.py', '.java',
   '.c', '.cpp', '.h', '.go', '.rs', '.sh', '.bash', '.env',
-  '.properties', '.ini', '.conf', '.config', '.sql'
+  '.properties', '.ini', '.conf', '.config', '.sql', '.tsv'
 ];
 
 // Initialize
