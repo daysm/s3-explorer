@@ -39,6 +39,14 @@ previewModal.addEventListener('click', (e) => {
   }
 });
 
+// Handle browser back/forward navigation
+window.addEventListener('popstate', (event) => {
+  if (event.state && event.state.prefix !== undefined) {
+    // Load files without pushing new state
+    loadFiles(event.state.prefix, false);
+  }
+});
+
 // Check if server is in CLI mode on page load
 async function checkCliMode() {
   try {
@@ -59,8 +67,18 @@ async function checkCliMode() {
       // Hide disconnect button in CLI mode
       disconnectBtn.style.display = 'none';
       
-      // Load initial files starting from root prefix
-      await loadFiles(rootPrefix);
+      // Check if URL has a path parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPrefix = urlParams.get('path');
+      const initialPrefix = urlPrefix !== null ? urlPrefix : rootPrefix;
+      
+      // Load initial files starting from URL prefix or root prefix
+      await loadFiles(initialPrefix, false);
+      
+      // Set initial history state if not already set
+      if (!history.state) {
+        history.replaceState({ prefix: initialPrefix }, '', `?path=${encodeURIComponent(initialPrefix)}`);
+      }
     }
   } catch (error) {
     console.error('Error checking CLI mode:', error);
@@ -113,17 +131,26 @@ async function handleCredentialsSubmit(e) {
     currentBucketEl.textContent = displayUri;
 
     // Load initial files starting from root prefix
-    await loadFiles(rootPrefix);
+    await loadFiles(rootPrefix, false);
+    
+    // Set initial history state
+    history.replaceState({ prefix: rootPrefix }, '', `?path=${encodeURIComponent(rootPrefix)}`);
   } catch (error) {
     showError(error.message);
   }
 }
 
 // Load files from S3
-async function loadFiles(prefix = '') {
+async function loadFiles(prefix = '', pushState = true) {
   showLoading();
   currentPrefix = prefix;
   updateBreadcrumb();
+
+  // Update URL and history
+  if (pushState) {
+    const url = `?path=${encodeURIComponent(prefix)}`;
+    history.pushState({ prefix }, '', url);
+  }
 
   try {
     const url = `/api/list?sessionId=${sessionId}&bucket=${currentBucket}&prefix=${encodeURIComponent(prefix)}`;
