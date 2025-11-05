@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import express, { Request, Response } from 'express';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { fromIni } from '@aws-sdk/credential-providers';
