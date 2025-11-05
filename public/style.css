@@ -1,0 +1,395 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #ffffff;
+  min-height: 100vh;
+  padding: 40px 20px;
+  color: #1a1a1a;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+h1 {
+  font-size: 2.5em;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  margin-bottom: 24px;
+  color: #1a1a1a;
+  font-weight: 600;
+  font-size: 1.5em;
+}
+
+.section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  transition: box-shadow 0.3s ease;
+}
+
+.section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95em;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1em;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #475569;
+  box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 5px;
+  color: #6b7280;
+  font-size: 0.875em;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: #1a1a1a;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2d2d2d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 0.9em;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-buttons .btn-small {
+  width: 100%;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.error-message {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  display: none;
+  font-size: 0.95em;
+}
+
+.error-message.show {
+  display: block;
+}
+
+.browser-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.breadcrumb {
+  font-size: 1.1em;
+  color: #374151;
+}
+
+.bucket-name {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.breadcrumb-link {
+  color: #475569;
+  cursor: pointer;
+  text-decoration: none;
+  margin: 0 5px;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+  color: #1a1a1a;
+  text-decoration: underline;
+}
+
+#files-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#files-table thead {
+  background: #f9fafb;
+}
+
+#files-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#files-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1a1a1a;
+}
+
+#files-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+#files-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.file-icon {
+  margin-right: 10px;
+  font-size: 1.1em;
+}
+
+.folder-row {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.folder-row:hover {
+  background: #f0f9ff !important;
+}
+
+.folder-link {
+  color: #1a1a1a;
+  text-decoration: none;
+  display: block;
+}
+
+.folder-link:hover {
+  color: #475569;
+}
+
+.file-row {
+  color: #374151;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+}
+
+.empty-state .icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e5e7eb;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  color: #1a1a1a;
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.3em;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.8em;
+  cursor: pointer;
+  color: #9ca3af;
+  line-height: 1;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #1a1a1a;
+  background: #f3f4f6;
+}
+
+.modal-body {
+  padding: 32px;
+  overflow: auto;
+  flex: 1;
+}
+
+#preview-content {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: Monaco, Menlo, 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #1a1a1a;
+  border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 20px 16px;
+  }
+
+  h1 {
+    font-size: 2em;
+  }
+
+  .section {
+    padding: 24px 20px;
+  }
+
+  .browser-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  #files-table {
+    font-size: 0.9em;
+  }
+
+  #files-table th,
+  #files-table td {
+    padding: 12px 10px;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-header,
+  .modal-body {
+    padding: 20px;
+  }
+}

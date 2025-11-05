@@ -1,0 +1,21 @@
+{
+  "name": "s3-explorer",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "s3-explorer": "./server.ts"
+  },
+  "scripts": {
+    "dev": "bun run server.ts",
+    "start": "bun run server.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.682.0",
+    "@aws-sdk/credential-providers": "^3.682.0",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "bun-types": "latest"
+  }
+}
