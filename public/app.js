@@ -153,11 +153,6 @@ async function loadFiles(prefix = '', pushState = true, refresh = false) {
     history.pushState({ prefix }, '', url);
   }
 
-  // Show loading indicator during refresh
-  if (refresh) {
-    loading.style.display = 'block';
-  }
-
   try {
     const refreshParam = refresh ? '&refresh=true' : '';
     const url = `/api/list?sessionId=${sessionId}&bucket=${currentBucket}&prefix=${encodeURIComponent(prefix)}${refreshParam}`;
@@ -172,15 +167,17 @@ async function loadFiles(prefix = '', pushState = true, refresh = false) {
   } catch (error) {
     showError(error.message);
     renderFiles([], []);
-  } finally {
-    if (refresh) {
-      loading.style.display = 'none';
-    }
   }
 }
 
 function handleRefresh() {
-  loadFiles(currentPrefix, false, true);
+  refreshBtn.disabled = true;
+  refreshBtn.innerHTML = 'Refreshing...';
+  
+  loadFiles(currentPrefix, false, true).finally(() => {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = 'Refresh';
+  });
 }
 
 function renderFiles(folders, files) {
@@ -231,8 +228,10 @@ function renderFiles(folders, files) {
       <td>${fileSize}</td>
       <td>${lastModified}</td>
       <td>
-        ${isTextFile ? `<button class="btn btn-small btn-primary" onclick="previewFile('${escapeHtml(file.fullPath)}', '${escapeHtml(fileName)}')">Preview</button>` : ''}
-        <button class="btn btn-small btn-secondary" onclick="downloadFile('${escapeHtml(file.fullPath)}', '${escapeHtml(fileName)}')">Download</button>
+        <div class="action-buttons">
+          ${isTextFile ? `<button class="btn btn-small btn-primary" onclick="previewFile('${escapeHtml(file.fullPath)}', '${escapeHtml(fileName)}')">Preview</button>` : ''}
+          <button class="btn btn-small btn-secondary" onclick="downloadFile('${escapeHtml(file.fullPath)}', '${escapeHtml(fileName)}')">Download</button>
+        </div>
       </td>
     `;
     
