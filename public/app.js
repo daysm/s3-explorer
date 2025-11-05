@@ -142,7 +142,6 @@ async function handleCredentialsSubmit(e) {
 
 // Load files from S3
 async function loadFiles(prefix = '', pushState = true) {
-  showLoading();
   currentPrefix = prefix;
   updateBreadcrumb();
 
@@ -165,8 +164,6 @@ async function loadFiles(prefix = '', pushState = true) {
   } catch (error) {
     showError(error.message);
     renderFiles([], []);
-  } finally {
-    hideLoading();
   }
 }
 
@@ -262,7 +259,6 @@ function updateBreadcrumb() {
 // Preview file
 async function previewFile(key, fileName) {
   try {
-    showLoading();
     const url = `/api/file?sessionId=${sessionId}&bucket=${currentBucket}&key=${encodeURIComponent(key)}`;
     const response = await fetch(url);
     const data = await response.json();
@@ -276,8 +272,6 @@ async function previewFile(key, fileName) {
     previewModal.style.display = 'flex';
   } catch (error) {
     showError(error.message);
-  } finally {
-    hideLoading();
   }
 }
 
