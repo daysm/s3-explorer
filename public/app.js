@@ -164,6 +164,9 @@ function renderFiles(folders, files) {
 
 // Update breadcrumb navigation
 function updateBreadcrumb() {
+  // Make bucket name clickable to go back to root
+  currentBucketEl.innerHTML = `<a class="breadcrumb-link" onclick="loadFiles('')" style="font-weight: 700; cursor: pointer;">${currentBucket}</a>`;
+  
   if (!currentPrefix) {
     breadcrumbPath.innerHTML = ' / <span style="color: #999;">(root)</span>';
     return;
