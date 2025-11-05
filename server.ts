@@ -14,6 +14,10 @@ app.use(express.static('public'));
 // Store S3 clients per session (in production, use proper session management)
 const s3Clients = new Map<string, S3Client>();
 
+// Cache for list results: key is "sessionId:bucket:prefix", value is { data, timestamp }
+const listCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // CLI mode configuration
 let cliMode = false;
 let cliProfile: string | null = null;
@@ -208,7 +212,7 @@ app.post('/api/init', (req: Request, res: Response) => {
 
 // List objects in a bucket with optional prefix (folder path)
 app.get('/api/list', async (req: Request, res: Response) => {
-  const { sessionId, bucket, prefix = '' } = req.query;
+  const { sessionId, bucket, prefix = '', refresh = 'false' } = req.query;
 
   if (!sessionId || typeof sessionId !== 'string') {
     return res.status(400).json({ error: 'Missing sessionId' });
@@ -223,8 +227,20 @@ app.get('/api/list', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Invalid session. Please re-enter credentials.' });
   }
 
+  // Check cache unless refresh is requested
+  const cacheKey = `${sessionId}:${bucket}:${prefix}`;
+  const shouldRefresh = refresh === 'true';
+  
+  if (!shouldRefresh) {
+    const cached = listCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`Cache hit for: ${bucket}/${prefix}`);
+      return res.json(cached.data);
+    }
+  }
+
   try {
-    console.log(`Listing bucket: ${bucket}, prefix: ${prefix}`);
+    console.log(`${shouldRefresh ? 'Refreshing' : 'Listing'} bucket: ${bucket}, prefix: ${prefix}`);
     
     let allCommonPrefixes: any[] = [];
     let allContents: any[] = [];
@@ -276,11 +292,19 @@ app.get('/api/list', async (req: Request, res: Response) => {
         lastModified: obj.LastModified,
       }));
 
-    res.json({
+    const responseData = {
       folders,
       files,
       prefix: prefix || '',
+    };
+
+    // Cache the result
+    listCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now(),
     });
+
+    res.json(responseData);
   } catch (error: any) {
     console.error('Error listing objects:', error);
     res.status(500).json({ 

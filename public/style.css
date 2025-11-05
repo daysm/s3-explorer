@@ -131,6 +131,11 @@ h2 {
   border-bottom: 2px solid #e0e0e0;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .breadcrumb {
   font-size: 1.1em;
   color: #555;

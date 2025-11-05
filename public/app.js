@@ -13,6 +13,7 @@ const breadcrumbPath = document.getElementById('breadcrumb-path');
 const filesTbody = document.getElementById('files-tbody');
 const loading = document.getElementById('loading');
 const disconnectBtn = document.getElementById('disconnect-btn');
+const refreshBtn = document.getElementById('refresh-btn');
 const previewModal = document.getElementById('preview-modal');
 const previewFilename = document.getElementById('preview-filename');
 const previewContent = document.getElementById('preview-content');
@@ -28,6 +29,7 @@ const TEXT_EXTENSIONS = [
 // Initialize
 credentialsForm.addEventListener('submit', handleCredentialsSubmit);
 disconnectBtn.addEventListener('click', handleDisconnect);
+refreshBtn.addEventListener('click', handleRefresh);
 closePreview.addEventListener('click', closePreviewModal);
 
 previewModal.addEventListener('click', (e) => {
@@ -131,7 +133,7 @@ async function handleCredentialsSubmit(e) {
   }
 }
 
-async function loadFiles(prefix = '', pushState = true) {
+async function loadFiles(prefix = '', pushState = true, refresh = false) {
   currentPrefix = prefix;
   updateBreadcrumb();
 
@@ -140,8 +142,14 @@ async function loadFiles(prefix = '', pushState = true) {
     history.pushState({ prefix }, '', url);
   }
 
+  // Show loading indicator during refresh
+  if (refresh) {
+    loading.style.display = 'block';
+  }
+
   try {
-    const url = `/api/list?sessionId=${sessionId}&bucket=${currentBucket}&prefix=${encodeURIComponent(prefix)}`;
+    const refreshParam = refresh ? '&refresh=true' : '';
+    const url = `/api/list?sessionId=${sessionId}&bucket=${currentBucket}&prefix=${encodeURIComponent(prefix)}${refreshParam}`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -153,7 +161,15 @@ async function loadFiles(prefix = '', pushState = true) {
   } catch (error) {
     showError(error.message);
     renderFiles([], []);
+  } finally {
+    if (refresh) {
+      loading.style.display = 'none';
+    }
   }
+}
+
+function handleRefresh() {
+  loadFiles(currentPrefix, false, true);
 }
 
 function renderFiles(folders, files) {
