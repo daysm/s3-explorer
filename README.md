@@ -4,11 +4,13 @@ A simple, local web application for browsing AWS S3 buckets with a clean UI. Bui
 
 ## Features
 
+- **AWS Profile Support** - Use your existing AWS profiles from `~/.aws/credentials`
 - Browse S3 buckets and navigate folder structures
 - View file metadata (size, last modified date)
 - Preview text files (.txt, .json, .csv, .log, .md, code files, etc.) without downloading
 - Download files directly from the browser
-- Breadcrumb navigation for easy folder traversal
+- Breadcrumb navigation for easy folder traversal (click bucket name to return to root)
+- Support for S3 Access Point aliases
 - Secure - credentials stay local, never stored on disk
 
 ## Prerequisites
@@ -28,7 +30,35 @@ bun install
 
 ## Usage
 
-1. Start the server:
+### Option 1: CLI Mode with AWS Profile (Recommended)
+
+Use your existing AWS profiles from `~/.aws/credentials`:
+
+```bash
+bun run server.ts --profile <profile-name> --bucket <bucket-name>
+```
+
+**Example:**
+```bash
+bun run server.ts --profile my-aws-profile --bucket my-bucket-name
+```
+
+You can also specify a region (optional, will be read from `~/.aws/config` if not provided):
+```bash
+bun run server.ts --profile my-aws-profile --bucket my-bucket-name --region eu-central-1
+```
+
+Then open your browser at `http://localhost:3000` and the app will automatically connect!
+
+**Advantages:**
+- No need to manually enter credentials
+- Uses your existing AWS profile configuration
+- Safer - credentials stay in your AWS config files
+- Faster - skips the credentials form
+
+### Option 2: Manual Credentials Entry
+
+1. Start the server without arguments:
 ```bash
 bun run dev
 ```
@@ -38,10 +68,10 @@ bun run dev
 http://localhost:3000
 ```
 
-3. Enter your AWS credentials:
+3. Enter your AWS credentials in the form:
    - **Access Key ID**: Your AWS access key
    - **Secret Access Key**: Your AWS secret key
-   - **Region**: AWS region (default: us-east-1)
+   - **Region**: AWS region (default: eu-central-1)
    - **Bucket Name**: The S3 bucket you want to explore
 
 4. Click **Connect** and start browsing your S3 bucket!
@@ -94,7 +124,8 @@ s3-explorer/
 
 ## API Endpoints
 
-- `POST /api/init` - Initialize S3 client with credentials
+- `GET /api/config` - Get server configuration (CLI mode status)
+- `POST /api/init` - Initialize S3 client with credentials (manual mode only)
 - `GET /api/list` - List objects in a bucket with optional prefix
 - `GET /api/file` - Get file content for preview
 - `GET /api/download` - Download a file

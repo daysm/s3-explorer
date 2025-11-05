@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.682.0",
+    "@aws-sdk/credential-providers": "^3.682.0",
     "express": "^4.18.2"
   },
   "devDependencies": {

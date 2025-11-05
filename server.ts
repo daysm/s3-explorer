@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { fromIni } from '@aws-sdk/credential-providers';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
 const app = express();
 const PORT = 3000;
@@ -11,8 +14,100 @@ app.use(express.static('public'));
 // Store S3 clients per session (in production, use proper session management)
 const s3Clients = new Map<string, S3Client>();
 
-// Initialize S3 client with credentials
+// CLI mode configuration
+let cliMode = false;
+let cliProfile: string | null = null;
+let cliBucket: string | null = null;
+let cliRegion: string | null = null;
+let cliSessionId: string | null = null;
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+let profileIndex = args.indexOf('--profile');
+let bucketIndex = args.indexOf('--bucket');
+let regionIndex = args.indexOf('--region');
+
+if (profileIndex !== -1 && profileIndex + 1 < args.length) {
+  cliProfile = args[profileIndex + 1];
+}
+
+if (bucketIndex !== -1 && bucketIndex + 1 < args.length) {
+  cliBucket = args[bucketIndex + 1];
+}
+
+if (regionIndex !== -1 && regionIndex + 1 < args.length) {
+  cliRegion = args[regionIndex + 1];
+}
+
+// If profile and bucket are provided, enable CLI mode
+if (cliProfile && cliBucket) {
+  cliMode = true;
+  console.log(`🔐 CLI Mode: Using AWS profile "${cliProfile}" for bucket "${cliBucket}"`);
+  
+  // Initialize S3 client with profile
+  try {
+    // Read region from config file if not provided
+    if (!cliRegion) {
+      const configPath = path.join(os.homedir(), '.aws', 'config');
+      if (fs.existsSync(configPath)) {
+        const configContent = fs.readFileSync(configPath, 'utf-8');
+        const profileSection = `[profile ${cliProfile}]`;
+        const lines = configContent.split('\n');
+        let inProfile = false;
+        
+        for (const line of lines) {
+          if (line.trim() === profileSection || line.trim() === `[${cliProfile}]`) {
+            inProfile = true;
+          } else if (line.trim().startsWith('[')) {
+            inProfile = false;
+          } else if (inProfile && line.includes('region')) {
+            const match = line.match(/region\s*=\s*(.+)/);
+            if (match) {
+              cliRegion = match[1].trim();
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    if (!cliRegion) {
+      cliRegion = 'us-east-1'; // Default region
+    }
+    
+    cliSessionId = 'cli-session';
+    const s3Client = new S3Client({
+      region: cliRegion,
+      credentials: fromIni({ profile: cliProfile }),
+      useArnRegion: true,
+      forcePathStyle: false,
+      followRegionRedirects: true, // Enable automatic region redirects
+    });
+    
+    s3Clients.set(cliSessionId, s3Client);
+    console.log(`✅ Initialized S3 client for region: ${cliRegion}`);
+  } catch (error: any) {
+    console.error(`❌ Error initializing S3 client with profile "${cliProfile}":`, error.message);
+    process.exit(1);
+  }
+}
+
+// Get server configuration endpoint
+app.get('/api/config', (req: Request, res: Response) => {
+  res.json({
+    cliMode,
+    bucket: cliBucket,
+    region: cliRegion,
+    sessionId: cliSessionId,
+  });
+});
+
+// Initialize S3 client with credentials (for manual mode)
 app.post('/api/init', (req: Request, res: Response) => {
+  if (cliMode) {
+    return res.status(400).json({ error: 'Server is running in CLI mode' });
+  }
+
   const { accessKeyId, secretAccessKey, region = 'us-east-1' } = req.body;
 
   if (!accessKeyId || !secretAccessKey) {
@@ -31,6 +126,8 @@ app.post('/api/init', (req: Request, res: Response) => {
       useArnRegion: true,
       // Force path style to false for Access Points
       forcePathStyle: false,
+      // Enable automatic region redirects
+      followRegionRedirects: true,
     });
 
     s3Clients.set(sessionId, s3Client);

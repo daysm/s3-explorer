@@ -38,6 +38,36 @@ previewModal.addEventListener('click', (e) => {
   }
 });
 
+// Check if server is in CLI mode on page load
+async function checkCliMode() {
+  try {
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    
+    if (config.cliMode && config.sessionId && config.bucket) {
+      // Server is in CLI mode, skip credentials form
+      sessionId = config.sessionId;
+      currentBucket = config.bucket;
+      currentPrefix = '';
+      
+      // Hide credentials form and show browser
+      credentialsSection.style.display = 'none';
+      browserSection.style.display = 'block';
+      
+      // Hide disconnect button in CLI mode
+      disconnectBtn.style.display = 'none';
+      
+      // Load initial files
+      await loadFiles();
+    }
+  } catch (error) {
+    console.error('Error checking CLI mode:', error);
+  }
+}
+
+// Run CLI mode check on page load
+checkCliMode();
+
 // Handle credentials form submission
 async function handleCredentialsSubmit(e) {
   e.preventDefault();
