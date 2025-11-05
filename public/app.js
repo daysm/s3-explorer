@@ -346,11 +346,3 @@ function hideError() {
   errorMessage.textContent = '';
   errorMessage.classList.remove('show');
 }
-
-function showLoading() {
-  loading.style.display = 'block';
-}
-
-function hideLoading() {
-  loading.style.display = 'none';
-}
