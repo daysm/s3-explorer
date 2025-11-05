@@ -134,19 +134,13 @@ async function handleCredentialsSubmit(e) {
 }
 
 function handleFolderClick(e) {
-  const path = e.currentTarget.dataset.path;
-  
-  // Check for middle-click (button 1) or Ctrl/Cmd+click
-  const isMiddleClick = e.type === 'auxclick' && e.button === 1;
-  const isModifiedClick = e.ctrlKey || e.metaKey;
-  
-  // If middle-click or modified click, let browser handle opening in new tab
-  if (isMiddleClick || isModifiedClick) {
-    return; // Browser will use the href attribute
+  // Let browser handle Ctrl/Cmd+click for opening in new tab
+  if (e.ctrlKey || e.metaKey) {
+    return;
   }
   
-  // Otherwise, prevent default and load in same tab
   e.preventDefault();
+  const path = e.currentTarget.dataset.path;
   loadFiles(path);
 }
 
@@ -219,7 +213,6 @@ function renderFiles(folders, files) {
     
     const link = row.querySelector('.folder-link');
     link.addEventListener('click', handleFolderClick);
-    link.addEventListener('auxclick', handleFolderClick);
     
     filesTbody.appendChild(row);
   });
@@ -255,7 +248,6 @@ function updateBreadcrumb() {
   
   const rootLink = currentBucketEl.querySelector('.breadcrumb-link');
   rootLink.addEventListener('click', handleFolderClick);
-  rootLink.addEventListener('auxclick', handleFolderClick);
   
   if (currentPrefix === rootPrefix) {
     breadcrumbPath.innerHTML = ' / <span style="color: #999;">(root)</span>';
@@ -283,7 +275,6 @@ function updateBreadcrumb() {
   
   breadcrumbPath.querySelectorAll('.breadcrumb-link').forEach(link => {
     link.addEventListener('click', handleFolderClick);
-    link.addEventListener('auxclick', handleFolderClick);
   });
 }
 
