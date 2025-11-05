@@ -226,22 +226,47 @@ app.get('/api/list', async (req: Request, res: Response) => {
   try {
     console.log(`Listing bucket: ${bucket}, prefix: ${prefix}`);
     
-    const command = new ListObjectsV2Command({
-      Bucket: bucket,
-      Prefix: prefix as string,
-      Delimiter: '/',
-    });
+    let allCommonPrefixes: any[] = [];
+    let allContents: any[] = [];
+    let continuationToken: string | undefined = undefined;
+    
+    // Paginate through all results
+    do {
+      const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix as string,
+        Delimiter: '/',
+        ContinuationToken: continuationToken,
+      });
 
-    const response = await s3Client.send(command);
+      const response = await s3Client.send(command);
+      
+      // Accumulate results
+      if (response.CommonPrefixes) {
+        allCommonPrefixes = allCommonPrefixes.concat(response.CommonPrefixes);
+      }
+      if (response.Contents) {
+        allContents = allContents.concat(response.Contents);
+      }
+      
+      continuationToken = response.NextContinuationToken;
+      
+      // Log progress for large listings
+      if (continuationToken) {
+        console.log(`Fetched ${allCommonPrefixes.length} folders and ${allContents.length} files so far...`);
+      }
+    } while (continuationToken);
+
+    console.log(`Total: ${allCommonPrefixes.length} folders and ${allContents.length} files`);
 
     // Separate folders and files
-    const folders = (response.CommonPrefixes || []).map((p) => ({
+    const folders = allCommonPrefixes.map((p) => ({
       type: 'folder',
       name: p.Prefix!.slice((prefix as string).length),
       fullPath: p.Prefix!,
     }));
 
-    const files = (response.Contents || [])
+    const files = allContents
       .filter((obj) => obj.Key !== prefix) // Exclude the folder itself
       .map((obj) => ({
         type: 'file',

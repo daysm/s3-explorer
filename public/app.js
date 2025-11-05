@@ -4,7 +4,6 @@ let currentBucket = null;
 let rootPrefix = '';
 let currentPrefix = '';
 
-// DOM Elements
 const credentialsSection = document.getElementById('credentials-section');
 const browserSection = document.getElementById('browser-section');
 const credentialsForm = document.getElementById('credentials-form');
@@ -19,7 +18,6 @@ const previewFilename = document.getElementById('preview-filename');
 const previewContent = document.getElementById('preview-content');
 const closePreview = document.getElementById('close-preview');
 
-// Text file extensions that can be previewed
 const TEXT_EXTENSIONS = [
   '.txt', '.json', '.csv', '.log', '.md', '.xml', '.yaml', '.yml',
   '.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.py', '.java',
@@ -32,24 +30,20 @@ credentialsForm.addEventListener('submit', handleCredentialsSubmit);
 disconnectBtn.addEventListener('click', handleDisconnect);
 closePreview.addEventListener('click', closePreviewModal);
 
-// Close modal when clicking outside
 previewModal.addEventListener('click', (e) => {
   if (e.target === previewModal) {
     closePreviewModal();
   }
 });
 
-// Close modal when pressing Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && previewModal.style.display === 'flex') {
     closePreviewModal();
   }
 });
 
-// Handle browser back/forward navigation
 window.addEventListener('popstate', (event) => {
   if (event.state && event.state.prefix !== undefined) {
-    // Load files without pushing new state
     loadFiles(event.state.prefix, false);
   }
 });
@@ -61,28 +55,22 @@ async function checkCliMode() {
     const config = await response.json();
     
     if (config.cliMode && config.sessionId && config.bucket) {
-      // Server is in CLI mode, skip credentials form
       sessionId = config.sessionId;
       currentBucket = config.bucket;
       rootPrefix = config.rootPrefix || '';
       currentPrefix = rootPrefix;
       
-      // Hide credentials form and show browser
       credentialsSection.style.display = 'none';
       browserSection.style.display = 'block';
       
-      // Hide disconnect button in CLI mode
       disconnectBtn.style.display = 'none';
       
-      // Check if URL has a path parameter
       const urlParams = new URLSearchParams(window.location.search);
       const urlPrefix = urlParams.get('path');
       const initialPrefix = urlPrefix !== null ? urlPrefix : rootPrefix;
       
-      // Load initial files starting from URL prefix or root prefix
       await loadFiles(initialPrefix, false);
       
-      // Set initial history state if not already set
       if (!history.state) {
         history.replaceState({ prefix: initialPrefix }, '', `?path=${encodeURIComponent(initialPrefix)}`);
       }
@@ -129,30 +117,24 @@ async function handleCredentialsSubmit(e) {
     rootPrefix = data.rootPrefix || '';
     currentPrefix = rootPrefix;
 
-    // Switch to browser view
     credentialsSection.style.display = 'none';
     browserSection.style.display = 'block';
     
-    // Display S3 URI in bucket name
     const displayUri = rootPrefix ? `s3://${currentBucket}/${rootPrefix}` : `s3://${currentBucket}`;
     currentBucketEl.textContent = displayUri;
 
-    // Load initial files starting from root prefix
     await loadFiles(rootPrefix, false);
     
-    // Set initial history state
     history.replaceState({ prefix: rootPrefix }, '', `?path=${encodeURIComponent(rootPrefix)}`);
   } catch (error) {
     showError(error.message);
   }
 }
 
-// Load files from S3
 async function loadFiles(prefix = '', pushState = true) {
   currentPrefix = prefix;
   updateBreadcrumb();
 
-  // Update URL and history
   if (pushState) {
     const url = `?path=${encodeURIComponent(prefix)}`;
     history.pushState({ prefix }, '', url);
@@ -174,7 +156,6 @@ async function loadFiles(prefix = '', pushState = true) {
   }
 }
 
-// Render files and folders
 function renderFiles(folders, files) {
   filesTbody.innerHTML = '';
 
@@ -190,7 +171,6 @@ function renderFiles(folders, files) {
     return;
   }
 
-  // Render folders
   folders.forEach((folder) => {
     const row = document.createElement('tr');
     row.className = 'folder-row';
@@ -206,7 +186,6 @@ function renderFiles(folders, files) {
     filesTbody.appendChild(row);
   });
 
-  // Render files
   files.forEach((file) => {
     const row = document.createElement('tr');
     row.className = 'file-row';
@@ -230,12 +209,9 @@ function renderFiles(folders, files) {
   });
 }
 
-// Update breadcrumb navigation
 function updateBreadcrumb() {
-  // Display S3 URI as bucket name
   const displayUri = rootPrefix ? `s3://${currentBucket}/${rootPrefix}` : `s3://${currentBucket}`;
   
-  // Make bucket name clickable to go back to root
   currentBucketEl.innerHTML = `<a class="breadcrumb-link" onclick="loadFiles('${rootPrefix}')" style="font-weight: 700; cursor: pointer;">${displayUri}</a>`;
   
   if (currentPrefix === rootPrefix) {
@@ -243,7 +219,6 @@ function updateBreadcrumb() {
     return;
   }
 
-  // Get the path relative to root
   const relativePath = currentPrefix.slice(rootPrefix.length);
   const parts = relativePath.split('/').filter(p => p);
   let path = rootPrefix;
@@ -263,7 +238,6 @@ function updateBreadcrumb() {
   breadcrumbPath.innerHTML = breadcrumb;
 }
 
-// Preview file
 async function previewFile(key, fileName) {
   try {
     const url = `/api/file?sessionId=${sessionId}&bucket=${currentBucket}&key=${encodeURIComponent(key)}`;
@@ -282,7 +256,6 @@ async function previewFile(key, fileName) {
   }
 }
 
-// Download file
 function downloadFile(key, fileName) {
   const url = `/api/download?sessionId=${sessionId}&bucket=${currentBucket}&key=${encodeURIComponent(key)}`;
   const a = document.createElement('a');
@@ -293,13 +266,11 @@ function downloadFile(key, fileName) {
   document.body.removeChild(a);
 }
 
-// Close preview modal
 function closePreviewModal() {
   previewModal.style.display = 'none';
   previewContent.textContent = '';
 }
 
-// Disconnect and return to credentials
 function handleDisconnect() {
   sessionId = null;
   currentBucket = null;
@@ -309,11 +280,9 @@ function handleDisconnect() {
   browserSection.style.display = 'none';
   credentialsSection.style.display = 'block';
   
-  // Clear form
   credentialsForm.reset();
 }
 
-// Utility functions
 function isPreviewable(fileName) {
   return TEXT_EXTENSIONS.some(ext => fileName.toLowerCase().endsWith(ext));
 }
