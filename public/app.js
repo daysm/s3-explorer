@@ -1,6 +1,7 @@
 // Global state
 let sessionId = null;
 let currentBucket = null;
+let rootPrefix = '';
 let currentPrefix = '';
 
 // DOM Elements
@@ -48,7 +49,8 @@ async function checkCliMode() {
       // Server is in CLI mode, skip credentials form
       sessionId = config.sessionId;
       currentBucket = config.bucket;
-      currentPrefix = '';
+      rootPrefix = config.rootPrefix || '';
+      currentPrefix = rootPrefix;
       
       // Hide credentials form and show browser
       credentialsSection.style.display = 'none';
@@ -57,8 +59,8 @@ async function checkCliMode() {
       // Hide disconnect button in CLI mode
       disconnectBtn.style.display = 'none';
       
-      // Load initial files
-      await loadFiles();
+      // Load initial files starting from root prefix
+      await loadFiles(rootPrefix);
     }
   } catch (error) {
     console.error('Error checking CLI mode:', error);
@@ -75,7 +77,7 @@ async function handleCredentialsSubmit(e) {
   const accessKey = document.getElementById('access-key').value;
   const secretKey = document.getElementById('secret-key').value;
   const region = document.getElementById('region').value;
-  const bucket = document.getElementById('bucket').value;
+  const s3Uri = document.getElementById('s3-uri').value;
 
   hideError();
 
@@ -87,6 +89,7 @@ async function handleCredentialsSubmit(e) {
         accessKeyId: accessKey,
         secretAccessKey: secretKey,
         region: region || 'us-east-1',
+        s3Uri: s3Uri,
       }),
     });
 
@@ -97,16 +100,20 @@ async function handleCredentialsSubmit(e) {
     }
 
     sessionId = data.sessionId;
-    currentBucket = bucket;
-    currentPrefix = '';
+    currentBucket = data.bucket;
+    rootPrefix = data.rootPrefix || '';
+    currentPrefix = rootPrefix;
 
     // Switch to browser view
     credentialsSection.style.display = 'none';
     browserSection.style.display = 'block';
-    currentBucketEl.textContent = bucket;
+    
+    // Display S3 URI in bucket name
+    const displayUri = rootPrefix ? `s3://${currentBucket}/${rootPrefix}` : `s3://${currentBucket}`;
+    currentBucketEl.textContent = displayUri;
 
-    // Load initial files
-    await loadFiles();
+    // Load initial files starting from root prefix
+    await loadFiles(rootPrefix);
   } catch (error) {
     showError(error.message);
   }
@@ -194,16 +201,21 @@ function renderFiles(folders, files) {
 
 // Update breadcrumb navigation
 function updateBreadcrumb() {
-  // Make bucket name clickable to go back to root
-  currentBucketEl.innerHTML = `<a class="breadcrumb-link" onclick="loadFiles('')" style="font-weight: 700; cursor: pointer;">${currentBucket}</a>`;
+  // Display S3 URI as bucket name
+  const displayUri = rootPrefix ? `s3://${currentBucket}/${rootPrefix}` : `s3://${currentBucket}`;
   
-  if (!currentPrefix) {
+  // Make bucket name clickable to go back to root
+  currentBucketEl.innerHTML = `<a class="breadcrumb-link" onclick="loadFiles('${rootPrefix}')" style="font-weight: 700; cursor: pointer;">${displayUri}</a>`;
+  
+  if (currentPrefix === rootPrefix) {
     breadcrumbPath.innerHTML = ' / <span style="color: #999;">(root)</span>';
     return;
   }
 
-  const parts = currentPrefix.split('/').filter(p => p);
-  let path = '';
+  // Get the path relative to root
+  const relativePath = currentPrefix.slice(rootPrefix.length);
+  const parts = relativePath.split('/').filter(p => p);
+  let path = rootPrefix;
   let breadcrumb = ' / ';
 
   parts.forEach((part, index) => {
@@ -263,6 +275,7 @@ function closePreviewModal() {
 function handleDisconnect() {
   sessionId = null;
   currentBucket = null;
+  rootPrefix = '';
   currentPrefix = '';
   
   browserSection.style.display = 'none';

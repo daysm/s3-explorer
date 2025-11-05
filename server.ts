@@ -18,21 +18,73 @@ const s3Clients = new Map<string, S3Client>();
 let cliMode = false;
 let cliProfile: string | null = null;
 let cliBucket: string | null = null;
+let cliRootPrefix: string | null = null;
 let cliRegion: string | null = null;
 let cliSessionId: string | null = null;
+
+// Parse S3 URI (s3://bucket/prefix or s3://bucket)
+function parseS3Uri(uri: string): { bucket: string; prefix: string } {
+  if (!uri.startsWith('s3://')) {
+    throw new Error('Invalid S3 URI. Must start with s3://');
+  }
+  
+  const withoutProtocol = uri.slice(5); // Remove 's3://'
+  const firstSlashIndex = withoutProtocol.indexOf('/');
+  
+  if (firstSlashIndex === -1) {
+    // No prefix, just bucket
+    return { bucket: withoutProtocol, prefix: '' };
+  }
+  
+  const bucket = withoutProtocol.slice(0, firstSlashIndex);
+  let prefix = withoutProtocol.slice(firstSlashIndex + 1);
+  
+  // Ensure prefix ends with / if it exists
+  if (prefix && !prefix.endsWith('/')) {
+    prefix += '/';
+  }
+  
+  return { bucket, prefix };
+}
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 let profileIndex = args.indexOf('--profile');
 let bucketIndex = args.indexOf('--bucket');
+let s3UriIndex = args.indexOf('--s3-uri');
 let regionIndex = args.indexOf('--region');
 
 if (profileIndex !== -1 && profileIndex + 1 < args.length) {
   cliProfile = args[profileIndex + 1];
 }
 
-if (bucketIndex !== -1 && bucketIndex + 1 < args.length) {
-  cliBucket = args[bucketIndex + 1];
+// Support both --bucket and --s3-uri (s3-uri takes precedence)
+if (s3UriIndex !== -1 && s3UriIndex + 1 < args.length) {
+  const s3Uri = args[s3UriIndex + 1];
+  try {
+    const parsed = parseS3Uri(s3Uri);
+    cliBucket = parsed.bucket;
+    cliRootPrefix = parsed.prefix;
+  } catch (error: any) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
+  }
+} else if (bucketIndex !== -1 && bucketIndex + 1 < args.length) {
+  const bucketArg = args[bucketIndex + 1];
+  // Check if bucket arg looks like an S3 URI
+  if (bucketArg.startsWith('s3://')) {
+    try {
+      const parsed = parseS3Uri(bucketArg);
+      cliBucket = parsed.bucket;
+      cliRootPrefix = parsed.prefix;
+    } catch (error: any) {
+      console.error(`❌ ${error.message}`);
+      process.exit(1);
+    }
+  } else {
+    cliBucket = bucketArg;
+    cliRootPrefix = '';
+  }
 }
 
 if (regionIndex !== -1 && regionIndex + 1 < args.length) {
@@ -42,7 +94,10 @@ if (regionIndex !== -1 && regionIndex + 1 < args.length) {
 // If profile and bucket are provided, enable CLI mode
 if (cliProfile && cliBucket) {
   cliMode = true;
-  console.log(`🔐 CLI Mode: Using AWS profile "${cliProfile}" for bucket "${cliBucket}"`);
+  const displayUri = cliRootPrefix 
+    ? `s3://${cliBucket}/${cliRootPrefix}` 
+    : `s3://${cliBucket}`;
+  console.log(`🔐 CLI Mode: Using AWS profile "${cliProfile}" for ${displayUri}`);
   
   // Initialize S3 client with profile
   try {
@@ -97,6 +152,7 @@ app.get('/api/config', (req: Request, res: Response) => {
   res.json({
     cliMode,
     bucket: cliBucket,
+    rootPrefix: cliRootPrefix || '',
     region: cliRegion,
     sessionId: cliSessionId,
   });
@@ -108,13 +164,20 @@ app.post('/api/init', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Server is running in CLI mode' });
   }
 
-  const { accessKeyId, secretAccessKey, region = 'us-east-1' } = req.body;
+  const { accessKeyId, secretAccessKey, region = 'us-east-1', s3Uri } = req.body;
 
   if (!accessKeyId || !secretAccessKey) {
     return res.status(400).json({ error: 'Missing credentials' });
   }
 
+  if (!s3Uri) {
+    return res.status(400).json({ error: 'Missing S3 URI' });
+  }
+
   try {
+    // Parse S3 URI to extract bucket and prefix
+    const { bucket, prefix } = parseS3Uri(s3Uri);
+    
     const sessionId = Math.random().toString(36).substring(7);
     const s3Client = new S3Client({
       region,
@@ -131,7 +194,12 @@ app.post('/api/init', (req: Request, res: Response) => {
     });
 
     s3Clients.set(sessionId, s3Client);
-    res.json({ sessionId, message: 'Credentials configured successfully' });
+    res.json({ 
+      sessionId, 
+      bucket,
+      rootPrefix: prefix,
+      message: 'Credentials configured successfully' 
+    });
   } catch (error: any) {
     console.error('Error initializing S3 client:', error);
     res.status(500).json({ error: 'Failed to initialize S3 client', details: error.message });

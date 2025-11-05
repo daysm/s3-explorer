@@ -31,9 +31,9 @@
           <small style="color: #666; display: block; margin-top: 5px;">e.g., us-east-1, eu-central-1, ap-southeast-1</small>
         </div>
         <div class="form-group">
-          <label for="bucket">Bucket Name or S3 Alias:</label>
-          <input type="text" id="bucket" required placeholder="my-bucket or access-point-alias">
-          <small style="color: #666; display: block; margin-top: 5px;">Supports regular buckets and S3 Access Point aliases</small>
+          <label for="s3-uri">S3 URI:</label>
+          <input type="text" id="s3-uri" required placeholder="s3://bucket-name/ or s3://bucket-name/prefix/">
+          <small style="color: #666; display: block; margin-top: 5px;">Examples: s3://my-bucket/ or s3://my-bucket/path/to/folder/</small>
         </div>
         <button type="submit" class="btn btn-primary">Connect</button>
       </form>
