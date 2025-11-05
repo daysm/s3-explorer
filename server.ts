@@ -19,26 +19,25 @@ const s3Clients = new Map<string, S3Client>();
 const listCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Validation helpers
-function validateSession(sessionId: any): { valid: boolean; error?: string } {
+// Validation helper
+function validateAndGetS3Client(
+  sessionId: any,
+  bucket: any,
+  key: any
+): { client?: S3Client; error?: string; statusCode?: number } {
   if (!sessionId || typeof sessionId !== 'string') {
-    return { valid: false, error: 'Missing sessionId' };
+    return { error: 'Missing sessionId', statusCode: 400 };
   }
-  return { valid: true };
-}
 
-function validateBucketAndKey(bucket: any, key: any): { valid: boolean; error?: string } {
   if (!bucket || typeof bucket !== 'string' || !key || typeof key !== 'string') {
-    return { valid: false, error: 'Missing bucket or key' };
+    return { error: 'Missing bucket or key', statusCode: 400 };
   }
-  return { valid: true };
-}
 
-function getS3Client(sessionId: string): { client?: S3Client; error?: string } {
   const s3Client = s3Clients.get(sessionId);
   if (!s3Client) {
-    return { error: 'Invalid session' };
+    return { error: 'Invalid session', statusCode: 401 };
   }
+
   return { client: s3Client };
 }
 
@@ -342,19 +341,9 @@ app.get('/api/list', async (req: Request, res: Response) => {
 app.get('/api/file', async (req: Request, res: Response) => {
   const { sessionId, bucket, key } = req.query;
 
-  const sessionValidation = validateSession(sessionId);
-  if (!sessionValidation.valid) {
-    return res.status(400).json({ error: sessionValidation.error });
-  }
-
-  const bucketKeyValidation = validateBucketAndKey(bucket, key);
-  if (!bucketKeyValidation.valid) {
-    return res.status(400).json({ error: bucketKeyValidation.error });
-  }
-
-  const { client: s3Client, error } = getS3Client(sessionId as string);
+  const { client: s3Client, error, statusCode } = validateAndGetS3Client(sessionId, bucket, key);
   if (error) {
-    return res.status(401).json({ error });
+    return res.status(statusCode!).json({ error });
   }
 
   try {
@@ -383,19 +372,9 @@ app.get('/api/file', async (req: Request, res: Response) => {
 app.get('/api/download', async (req: Request, res: Response) => {
   const { sessionId, bucket, key } = req.query;
 
-  const sessionValidation = validateSession(sessionId);
-  if (!sessionValidation.valid) {
-    return res.status(400).json({ error: sessionValidation.error });
-  }
-
-  const bucketKeyValidation = validateBucketAndKey(bucket, key);
-  if (!bucketKeyValidation.valid) {
-    return res.status(400).json({ error: bucketKeyValidation.error });
-  }
-
-  const { client: s3Client, error } = getS3Client(sessionId as string);
+  const { client: s3Client, error, statusCode } = validateAndGetS3Client(sessionId, bucket, key);
   if (error) {
-    return res.status(401).json({ error });
+    return res.status(statusCode!).json({ error });
   }
 
   try {
