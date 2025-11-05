@@ -39,6 +39,13 @@ previewModal.addEventListener('click', (e) => {
   }
 });
 
+// Close modal when pressing Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && previewModal.style.display === 'flex') {
+    closePreviewModal();
+  }
+});
+
 // Handle browser back/forward navigation
 window.addEventListener('popstate', (event) => {
   if (event.state && event.state.prefix !== undefined) {
