@@ -12,34 +12,32 @@
       <h1>S3 Explorer</h1>
     </header>
 
-    <!-- Credentials Form -->
     <div id="credentials-section" class="section">
       <h2>AWS Credentials</h2>
       <form id="credentials-form">
         <div class="form-group">
-          <label for="access-key">Access Key ID:</label>
+          <label for="access-key">Access Key ID</label>
           <input type="text" id="access-key" required autocomplete="off">
         </div>
         <div class="form-group">
-          <label for="secret-key">Secret Access Key:</label>
+          <label for="secret-key">Secret Access Key</label>
           <input type="password" id="secret-key" required autocomplete="off">
         </div>
         <div class="form-group">
-          <label for="region">Region:</label>
+          <label for="region">Region</label>
           <input type="text" id="region" value="eu-central-1" placeholder="eu-central-1" required>
-          <small style="color: #666; display: block; margin-top: 5px;">e.g., us-east-1, eu-central-1, ap-southeast-1</small>
+          <small>e.g., us-east-1, eu-central-1, ap-southeast-1</small>
         </div>
         <div class="form-group">
-          <label for="s3-uri">S3 URI:</label>
+          <label for="s3-uri">S3 URI</label>
           <input type="text" id="s3-uri" required placeholder="s3://bucket-name/ or s3://bucket-name/prefix/">
-          <small style="color: #666; display: block; margin-top: 5px;">Examples: s3://my-bucket/ or s3://my-bucket/path/to/folder/</small>
+          <small>Examples: s3://my-bucket/ or s3://my-bucket/path/to/folder/</small>
         </div>
         <button type="submit" class="btn btn-primary">Connect</button>
       </form>
       <div id="error-message" class="error-message"></div>
     </div>
 
-    <!-- Browser Section -->
     <div id="browser-section" class="section" style="display: none;">
       <div class="browser-header">
         <div class="breadcrumb">
@@ -52,25 +50,19 @@
         </div>
       </div>
 
-      <div id="loading" class="loading" style="display: none;">Loading...</div>
-
-      <div id="files-container">
-        <table id="files-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Size</th>
-              <th>Last Modified</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="files-tbody">
-          </tbody>
-        </table>
-      </div>
+      <table id="files-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Last Modified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="files-tbody"></tbody>
+      </table>
     </div>
 
-    <!-- File Preview Modal -->
     <div id="preview-modal" class="modal" style="display: none;">
       <div class="modal-content">
         <div class="modal-header">
