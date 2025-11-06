@@ -254,7 +254,7 @@ class Renderer {
     if (e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     const path = e.currentTarget.dataset.path;
-    app.loadFiles(path);
+    app.loadFiles(path, true, false, false);
   }
 
   handleFileAction(e) {
@@ -301,7 +301,7 @@ class S3Explorer {
 
     window.addEventListener('popstate', (event) => {
       if (event.state && event.state.prefix !== undefined) {
-        this.loadFiles(event.state.prefix, false);
+        this.loadFiles(event.state.prefix, false, false, true);
       }
     });
   }
@@ -398,19 +398,39 @@ class S3Explorer {
     }
   }
 
-  async loadFiles(prefix = '', pushState = true, refresh = false) {
+  async loadFiles(prefix = '', pushState = true, refresh = false, restoreScroll = false) {
+    // Save current scroll position before navigating away
+    if (pushState && !restoreScroll) {
+      const currentState = history.state;
+      if (currentState && currentState.prefix !== undefined) {
+        history.replaceState(
+          { ...currentState, scrollY: window.scrollY },
+          '',
+          window.location.href
+        );
+      }
+    }
+
     this.state.setCurrentPrefix(prefix);
     this.renderer.updateBreadcrumb();
 
     if (pushState) {
       const s3Uri = `s3://${this.state.currentBucket}/${prefix}`;
       const url = buildPathUrl(s3Uri);
-      history.pushState({ prefix }, '', url);
+      history.pushState({ prefix, scrollY: 0 }, '', url);
     }
 
     try {
       const data = await API.listFiles(this.state.sessionId, this.state.currentBucket, prefix, refresh);
       this.renderer.renderFiles(data.folders, data.files);
+      
+      // Restore scroll position if navigating back/forward
+      if (restoreScroll && history.state && history.state.scrollY !== undefined) {
+        // Use requestAnimationFrame to ensure DOM is fully rendered
+        requestAnimationFrame(() => {
+          window.scrollTo(0, history.state.scrollY);
+        });
+      }
     } catch (error) {
       this.dom.showError(error.message);
       this.renderer.renderFiles([], []);
