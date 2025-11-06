@@ -154,7 +154,7 @@ if (cliProfile && cliBucket) {
     }
     
     if (!cliRegion) {
-      cliRegion = 'us-east-1'; // Default region
+      cliRegion = 'eu-central-1'; // Default region
     }
     
     cliSessionId = 'cli-session';

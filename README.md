@@ -64,7 +64,7 @@ http://localhost:3000
 3. Enter your AWS credentials in the form:
    - **Access Key ID**: Your AWS access key
    - **Secret Access Key**: Your AWS secret key
-   - **Region**: AWS region (default: us-east-1)
+   - **Region**: AWS region (default: eu-central-1)
    - **S3 URI**: The S3 location to explore (e.g., `s3://my-bucket` or `s3://my-bucket/path/to/folder/`)
 
 4. Click **Connect** and start browsing your S3 bucket!
