@@ -1,5 +1,5 @@
 {
-  "name": "s3-explorer",
+  "name": "@daysm/s3-explorer",
   "version": "1.0.0",
   "type": "module",
   "bin": {
