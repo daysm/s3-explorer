@@ -241,10 +241,12 @@ class HistoryManager {
   static addEntry(profile, s3Uri, region = '') {
     const history = this.getHistory();
     const now = new Date().toISOString();
+    const normalizedRegion = region || '';
     
-    const existingIndex = history.findIndex(
-      entry => entry.profile === profile && entry.s3Uri === s3Uri && entry.region === region
-    );
+    const existingIndex = history.findIndex(entry => {
+      const entryRegion = entry.region || '';
+      return entry.profile === profile && entry.s3Uri === s3Uri && entryRegion === normalizedRegion;
+    });
     
     if (existingIndex !== -1) {
       history[existingIndex].lastUsed = now;
@@ -266,9 +268,11 @@ class HistoryManager {
 
   static deleteEntry(profile, s3Uri, region = '') {
     const history = this.getHistory();
-    const filteredHistory = history.filter(
-      entry => !(entry.profile === profile && entry.s3Uri === s3Uri && entry.region === region)
-    );
+    const normalizedRegion = region || '';
+    const filteredHistory = history.filter(entry => {
+      const entryRegion = entry.region || '';
+      return !(entry.profile === profile && entry.s3Uri === s3Uri && entryRegion === normalizedRegion);
+    });
     
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredHistory));
