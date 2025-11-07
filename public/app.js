@@ -53,9 +53,16 @@ class DOMElements {
     this.filesTbody = document.getElementById('files-tbody');
     this.disconnectBtn = document.getElementById('disconnect-btn');
     this.refreshBtn = document.getElementById('refresh-btn');
+    this.settingsBtn = document.getElementById('settings-btn');
     this.previewModal = document.getElementById('preview-modal');
     this.previewFilename = document.getElementById('preview-filename');
     this.previewContent = document.getElementById('preview-content');
+    this.settingsModal = document.getElementById('settings-modal');
+    this.settingsForm = document.getElementById('settings-form');
+    this.settingsErrorMessage = document.getElementById('settings-error-message');
+    this.profileSelect = document.getElementById('profile-select');
+    this.settingsS3Uri = document.getElementById('settings-s3-uri');
+    this.regionSelect = document.getElementById('region-select');
   }
 
   showBrowser() {
@@ -89,9 +96,37 @@ class DOMElements {
     this.previewContent.textContent = '';
   }
 
+  showSettingsModal() {
+    this.settingsModal.style.display = 'flex';
+  }
+
+  closeSettingsModal() {
+    this.settingsModal.style.display = 'none';
+    this.hideSettingsError();
+  }
+
+  showSettingsError(message) {
+    this.settingsErrorMessage.textContent = message;
+    this.settingsErrorMessage.classList.add('show');
+  }
+
+  hideSettingsError() {
+    this.settingsErrorMessage.textContent = '';
+    this.settingsErrorMessage.classList.remove('show');
+  }
+
   setRefreshState(loading) {
     this.refreshBtn.disabled = loading;
     this.refreshBtn.textContent = loading ? 'Refreshing...' : 'Refresh';
+  }
+
+  setSettingsFormState(loading) {
+    const submitBtn = this.settingsForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = loading;
+    submitBtn.textContent = loading ? 'Applying...' : 'Apply Changes';
+    this.profileSelect.disabled = loading;
+    this.settingsS3Uri.disabled = loading;
+    this.regionSelect.disabled = loading;
   }
 }
 
@@ -99,6 +134,28 @@ class API {
   static async getConfig() {
     const response = await fetch('/api/config');
     return response.json();
+  }
+
+  static async getProfiles() {
+    const response = await fetch('/api/profiles');
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get profiles');
+    }
+    return data;
+  }
+
+  static async updateConfig(config) {
+    const response = await fetch('/api/update-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update configuration');
+    }
+    return data;
   }
 
   static async init(credentials) {
@@ -275,6 +332,7 @@ class S3Explorer {
     this.state = new State();
     this.dom = new DOMElements();
     this.renderer = new Renderer(this.dom, this.state);
+    this.cliMode = false;
     this.setupEventListeners();
     this.checkCliMode();
   }
@@ -283,9 +341,18 @@ class S3Explorer {
     this.dom.credentialsForm.addEventListener('submit', (e) => this.handleCredentialsSubmit(e));
     this.dom.disconnectBtn.addEventListener('click', () => this.handleDisconnect());
     this.dom.refreshBtn.addEventListener('click', () => this.handleRefresh());
+    this.dom.settingsBtn.addEventListener('click', () => this.handleSettings());
     
     const closePreview = document.getElementById('close-preview');
     closePreview.addEventListener('click', () => this.dom.closeModal());
+
+    const closeSettings = document.getElementById('close-settings');
+    closeSettings.addEventListener('click', () => this.dom.closeSettingsModal());
+
+    const cancelSettings = document.getElementById('cancel-settings');
+    cancelSettings.addEventListener('click', () => this.dom.closeSettingsModal());
+
+    this.dom.settingsForm.addEventListener('submit', (e) => this.handleSettingsSubmit(e));
 
     this.dom.previewModal.addEventListener('click', (e) => {
       if (e.target === this.dom.previewModal) {
@@ -293,9 +360,19 @@ class S3Explorer {
       }
     });
 
+    this.dom.settingsModal.addEventListener('click', (e) => {
+      if (e.target === this.dom.settingsModal) {
+        this.dom.closeSettingsModal();
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.dom.previewModal.style.display === 'flex') {
-        this.dom.closeModal();
+      if (e.key === 'Escape') {
+        if (this.dom.previewModal.style.display === 'flex') {
+          this.dom.closeModal();
+        } else if (this.dom.settingsModal.style.display === 'flex') {
+          this.dom.closeSettingsModal();
+        }
       }
     });
 
@@ -311,9 +388,11 @@ class S3Explorer {
       const config = await API.getConfig();
       
       if (config.cliMode && config.sessionId && config.bucket) {
+        this.cliMode = true;
         this.state.setSession(config.sessionId, config.bucket, config.rootPrefix);
         this.dom.showBrowser();
         this.dom.disconnectBtn.style.display = 'none';
+        this.dom.settingsBtn.style.display = 'inline-flex';
         
         const urlParams = new URLSearchParams(window.location.search);
         const urlPath = urlParams.get('path');
@@ -466,6 +545,85 @@ class S3Explorer {
     this.state.reset();
     this.dom.showCredentials();
     this.dom.credentialsForm.reset();
+  }
+
+  async handleSettings() {
+    try {
+      // Load available profiles
+      const profilesData = await API.getProfiles();
+      this.dom.profileSelect.innerHTML = '';
+      
+      if (profilesData.profiles.length === 0) {
+        this.dom.profileSelect.innerHTML = '<option value="">No profiles found</option>';
+        this.dom.showSettingsError('No AWS profiles found in ~/.aws/credentials or ~/.aws/config');
+        this.dom.showSettingsModal();
+        return;
+      }
+
+      // Get current config
+      const config = await API.getConfig();
+      
+      // Populate profile dropdown
+      profilesData.profiles.forEach(profile => {
+        const option = document.createElement('option');
+        option.value = profile;
+        option.textContent = profile;
+        if (profile === config.profile) {
+          option.selected = true;
+        }
+        this.dom.profileSelect.appendChild(option);
+      });
+
+      // Set current S3 URI and region
+      const currentUri = config.rootPrefix 
+        ? `s3://${config.bucket}/${config.rootPrefix}` 
+        : `s3://${config.bucket}/`;
+      this.dom.settingsS3Uri.value = currentUri;
+      this.dom.regionSelect.value = config.region || '';
+
+      this.dom.hideSettingsError();
+      this.dom.showSettingsModal();
+    } catch (error) {
+      this.dom.showError(error.message);
+    }
+  }
+
+  async handleSettingsSubmit(e) {
+    e.preventDefault();
+    
+    const profile = this.dom.profileSelect.value;
+    const s3Uri = this.dom.settingsS3Uri.value;
+    const region = this.dom.regionSelect.value;
+
+    this.dom.hideSettingsError();
+    this.dom.setSettingsFormState(true);
+
+    try {
+      const data = await API.updateConfig({
+        profile,
+        s3Uri,
+        region: region || undefined
+      });
+
+      // Update state with new configuration
+      this.state.setSession(this.state.sessionId, data.bucket, data.rootPrefix);
+      
+      // Close modal
+      this.dom.closeSettingsModal();
+      
+      // Reload the browser at the new root
+      await this.loadFiles(data.rootPrefix, false);
+      
+      // Update URL
+      const newS3Uri = `s3://${data.bucket}/${data.rootPrefix}`;
+      history.replaceState({ prefix: data.rootPrefix }, '', buildPathUrl(newS3Uri));
+      
+      this.renderer.updateBreadcrumb();
+    } catch (error) {
+      this.dom.showSettingsError(error.message);
+    } finally {
+      this.dom.setSettingsFormState(false);
+    }
   }
 }
 

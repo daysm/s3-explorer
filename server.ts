@@ -182,7 +182,141 @@ app.get('/api/config', (req: Request, res: Response) => {
     rootPrefix: cliRootPrefix || '',
     region: cliRegion,
     sessionId: cliSessionId,
+    profile: cliProfile,
   });
+});
+
+// Get available AWS profiles
+app.get('/api/profiles', (req: Request, res: Response) => {
+  try {
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const configPath = path.join(os.homedir(), '.aws', 'config');
+    const profiles: string[] = [];
+
+    // Parse credentials file
+    if (fs.existsSync(credentialsPath)) {
+      const credentialsContent = fs.readFileSync(credentialsPath, 'utf-8');
+      const credentialMatches = credentialsContent.matchAll(/\[([^\]]+)\]/g);
+      for (const match of credentialMatches) {
+        if (!profiles.includes(match[1])) {
+          profiles.push(match[1]);
+        }
+      }
+    }
+
+    // Parse config file
+    if (fs.existsSync(configPath)) {
+      const configContent = fs.readFileSync(configPath, 'utf-8');
+      const configMatches = configContent.matchAll(/\[(?:profile\s+)?([^\]]+)\]/g);
+      for (const match of configMatches) {
+        if (!profiles.includes(match[1])) {
+          profiles.push(match[1]);
+        }
+      }
+    }
+
+    res.json({ profiles: profiles.sort() });
+  } catch (error: any) {
+    console.error('Error reading AWS profiles:', error);
+    res.status(500).json({ error: 'Failed to read AWS profiles', details: error.message });
+  }
+});
+
+// Update configuration (CLI mode only)
+app.post('/api/update-config', async (req: Request, res: Response) => {
+  if (!cliMode) {
+    return res.status(400).json({ error: 'Configuration updates only available in CLI mode' });
+  }
+
+  const { profile, s3Uri, region } = req.body;
+
+  if (!profile || !s3Uri) {
+    return res.status(400).json({ error: 'Missing profile or S3 URI' });
+  }
+
+  try {
+    // Parse S3 URI
+    const parsed = parseS3Uri(s3Uri);
+    
+    // Update global configuration
+    cliProfile = profile;
+    cliBucket = parsed.bucket;
+    cliRootPrefix = parsed.prefix;
+    
+    // Determine region
+    let newRegion = region || null;
+    if (!newRegion) {
+      // Try to read region from config file
+      const configPath = path.join(os.homedir(), '.aws', 'config');
+      if (fs.existsSync(configPath)) {
+        const configContent = fs.readFileSync(configPath, 'utf-8');
+        const profileSection = `[profile ${profile}]`;
+        const lines = configContent.split('\n');
+        let inProfile = false;
+        
+        for (const line of lines) {
+          if (line.trim() === profileSection || line.trim() === `[${profile}]`) {
+            inProfile = true;
+          } else if (line.trim().startsWith('[')) {
+            inProfile = false;
+          } else if (inProfile && line.includes('region')) {
+            const match = line.match(/region\s*=\s*(.+)/);
+            if (match) {
+              newRegion = match[1].trim();
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    if (!newRegion) {
+      newRegion = 'eu-central-1'; // Default region
+    }
+    
+    cliRegion = newRegion;
+    
+    // Clear the cache
+    listCache.clear();
+    
+    // Create new S3 client with updated profile
+    const s3Client = new S3Client({
+      region: cliRegion,
+      credentials: fromIni({ profile: cliProfile }),
+      useArnRegion: true,
+      forcePathStyle: false,
+      followRegionRedirects: true,
+    });
+    
+    // Test the connection by listing objects
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: cliBucket,
+        Prefix: cliRootPrefix,
+        Delimiter: '/',
+        MaxKeys: 1,
+      });
+      await s3Client.send(command);
+    } catch (error: any) {
+      throw new Error(`Failed to connect to S3: ${error.message}`);
+    }
+    
+    // Update the session with the new client
+    s3Clients.set(cliSessionId!, s3Client);
+    
+    console.log(`✅ Configuration updated: profile="${cliProfile}", s3Uri="${s3Uri}", region="${cliRegion}"`);
+    
+    res.json({
+      success: true,
+      bucket: cliBucket,
+      rootPrefix: cliRootPrefix,
+      region: cliRegion,
+      profile: cliProfile,
+    });
+  } catch (error: any) {
+    console.error('Error updating configuration:', error);
+    res.status(500).json({ error: 'Failed to update configuration', details: error.message });
+  }
 });
 
 // Initialize S3 client with credentials (for manual mode)

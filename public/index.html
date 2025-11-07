@@ -45,6 +45,7 @@
           <span id="breadcrumb-path"></span>
         </div>
         <div class="header-actions">
+          <button id="settings-btn" class="btn btn-secondary" title="Settings" style="display: none;">Settings</button>
           <button id="refresh-btn" class="btn btn-primary" title="Refresh current folder">Refresh</button>
           <button id="disconnect-btn" class="btn btn-secondary">Disconnect</button>
         </div>
@@ -71,6 +72,41 @@
         </div>
         <div class="modal-body">
           <pre id="preview-content"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="modal" style="display: none;">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button id="close-settings" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="settings-form">
+            <div class="form-group">
+              <label for="profile-select">AWS Profile</label>
+              <select id="profile-select" required>
+                <option value="">Loading profiles...</option>
+              </select>
+              <small>Select the AWS profile to use for authentication</small>
+            </div>
+            <div class="form-group">
+              <label for="settings-s3-uri">S3 URI</label>
+              <input type="text" id="settings-s3-uri" required placeholder="s3://bucket-name/ or s3://bucket-name/prefix/">
+              <small>Examples: s3://my-bucket/ or s3://my-bucket/path/to/folder/</small>
+            </div>
+            <div class="form-group">
+              <label for="region-select">Region (optional)</label>
+              <input type="text" id="region-select" placeholder="Will use profile's default region">
+              <small>e.g., us-east-1, eu-central-1, ap-southeast-1</small>
+            </div>
+            <div id="settings-error-message" class="error-message"></div>
+            <div class="modal-actions">
+              <button type="submit" class="btn btn-primary">Apply Changes</button>
+              <button type="button" id="cancel-settings" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
