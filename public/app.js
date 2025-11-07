@@ -146,7 +146,10 @@ class DOMElements {
             <span class="history-time">${HistoryManager.formatTimestamp(entry.lastUsed)}</span>
           </div>
         </div>
-        <button class="btn-history-load" data-index="${index}" title="Load this URI">↩</button>
+        <div class="history-actions">
+          <button class="btn-history-load" data-index="${index}" title="Load this URI">↩</button>
+          <button class="btn-history-delete" data-index="${index}" title="Delete this entry">×</button>
+        </div>
       </div>
     `).join('');
     
@@ -258,6 +261,21 @@ class HistoryManager {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
     } catch (error) {
       console.error('Error saving history:', error);
+    }
+  }
+
+  static deleteEntry(profile, s3Uri, region = '') {
+    const history = this.getHistory();
+    const filteredHistory = history.filter(
+      entry => !(entry.profile === profile && entry.s3Uri === s3Uri && entry.region === region)
+    );
+    
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredHistory));
+      return true;
+    } catch (error) {
+      console.error('Error deleting history entry:', error);
+      return false;
     }
   }
 
@@ -665,24 +683,45 @@ class S3Explorer {
       // Load and display history
       const history = HistoryManager.getHistory();
       this.dom.renderHistory(history);
-      
-      // Add click handlers for history items
-      this.dom.historyContainer.querySelectorAll('.btn-history-load').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          const index = parseInt(e.currentTarget.dataset.index);
-          const entry = history[index];
-          this.dom.profileSelect.value = entry.profile;
-          this.dom.settingsS3Uri.value = entry.s3Uri;
-          this.dom.regionSelect.value = entry.region || '';
-        });
-      });
+      this.attachHistoryHandlers(history);
 
       this.dom.hideSettingsError();
       this.dom.showSettingsModal();
     } catch (error) {
       this.dom.showError(error.message);
     }
+  }
+
+  attachHistoryHandlers(history) {
+    // Add click handlers for load buttons
+    this.dom.historyContainer.querySelectorAll('.btn-history-load').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const index = parseInt(e.currentTarget.dataset.index);
+        const entry = history[index];
+        this.dom.profileSelect.value = entry.profile;
+        this.dom.settingsS3Uri.value = entry.s3Uri;
+        this.dom.regionSelect.value = entry.region || '';
+      });
+    });
+
+    // Add click handlers for delete buttons
+    this.dom.historyContainer.querySelectorAll('.btn-history-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const index = parseInt(e.currentTarget.dataset.index);
+        const entry = history[index];
+        
+        if (confirm(`Delete history entry for ${escapeHtml(entry.s3Uri)}?`)) {
+          HistoryManager.deleteEntry(entry.profile, entry.s3Uri, entry.region);
+          // Re-render history
+          const updatedHistory = HistoryManager.getHistory();
+          this.dom.renderHistory(updatedHistory);
+          // Re-attach handlers
+          this.attachHistoryHandlers(updatedHistory);
+        }
+      });
+    });
   }
 
   async handleSettingsSubmit(e) {

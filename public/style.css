@@ -494,6 +494,40 @@ h2 {
   transform: translateY(0);
 }
 
+.history-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-history-delete {
+  background: #fca5a5;
+  color: #991b1b;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.btn-history-delete:hover {
+  background: #f87171;
+  color: #7f1d1d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-history-delete:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 768px) {
   body {
     padding: 20px 16px;
