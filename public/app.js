@@ -63,6 +63,7 @@ class DOMElements {
     this.profileSelect = document.getElementById('profile-select');
     this.settingsS3Uri = document.getElementById('settings-s3-uri');
     this.regionSelect = document.getElementById('region-select');
+    this.historyContainer = document.getElementById('history-container');
   }
 
   showBrowser() {
@@ -127,6 +128,29 @@ class DOMElements {
     this.profileSelect.disabled = loading;
     this.settingsS3Uri.disabled = loading;
     this.regionSelect.disabled = loading;
+  }
+
+  renderHistory(history) {
+    if (!history || history.length === 0) {
+      this.historyContainer.innerHTML = '<p class="history-empty">No recent S3 URIs</p>';
+      return;
+    }
+    
+    const historyHtml = history.map((entry, index) => `
+      <div class="history-item" data-index="${index}">
+        <div class="history-info">
+          <div class="history-uri">${escapeHtml(entry.s3Uri)}</div>
+          <div class="history-meta">
+            <span class="history-profile">Profile: ${escapeHtml(entry.profile)}</span>
+            ${entry.region ? `<span class="history-region">${escapeHtml(entry.region)}</span>` : ''}
+            <span class="history-time">${HistoryManager.formatTimestamp(entry.lastUsed)}</span>
+          </div>
+        </div>
+        <button class="btn-history-load" data-index="${index}" title="Load this URI">↩</button>
+      </div>
+    `).join('');
+    
+    this.historyContainer.innerHTML = historyHtml;
   }
 }
 
@@ -194,6 +218,63 @@ class API {
 
   static getDownloadUrl(sessionId, bucket, key) {
     return `/api/download?sessionId=${sessionId}&bucket=${bucket}&key=${encodeURIComponent(key)}`;
+  }
+}
+
+class HistoryManager {
+  static STORAGE_KEY = 's3-explorer-history';
+  static MAX_ENTRIES = 10;
+
+  static getHistory() {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('Error reading history:', error);
+      return [];
+    }
+  }
+
+  static addEntry(profile, s3Uri, region = '') {
+    const history = this.getHistory();
+    const now = new Date().toISOString();
+    
+    const existingIndex = history.findIndex(
+      entry => entry.profile === profile && entry.s3Uri === s3Uri && entry.region === region
+    );
+    
+    if (existingIndex !== -1) {
+      history[existingIndex].lastUsed = now;
+      const [entry] = history.splice(existingIndex, 1);
+      history.unshift(entry);
+    } else {
+      history.unshift({ profile, s3Uri, region, lastUsed: now });
+      if (history.length > this.MAX_ENTRIES) {
+        history.length = this.MAX_ENTRIES;
+      }
+    }
+    
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
+    } catch (error) {
+      console.error('Error saving history:', error);
+    }
+  }
+
+  static formatTimestamp(isoString) {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    
+    return date.toLocaleDateString();
   }
 }
 
@@ -581,6 +662,22 @@ class S3Explorer {
       this.dom.settingsS3Uri.value = currentUri;
       this.dom.regionSelect.value = config.region || '';
 
+      // Load and display history
+      const history = HistoryManager.getHistory();
+      this.dom.renderHistory(history);
+      
+      // Add click handlers for history items
+      this.dom.historyContainer.querySelectorAll('.btn-history-load').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const index = parseInt(e.currentTarget.dataset.index);
+          const entry = history[index];
+          this.dom.profileSelect.value = entry.profile;
+          this.dom.settingsS3Uri.value = entry.s3Uri;
+          this.dom.regionSelect.value = entry.region || '';
+        });
+      });
+
       this.dom.hideSettingsError();
       this.dom.showSettingsModal();
     } catch (error) {
@@ -607,6 +704,9 @@ class S3Explorer {
 
       // Update state with new configuration
       this.state.setSession(this.state.sessionId, data.bucket, data.rootPrefix);
+      
+      // Save to history
+      HistoryManager.addEntry(profile, s3Uri, region);
       
       // Close modal
       this.dom.closeSettingsModal();
